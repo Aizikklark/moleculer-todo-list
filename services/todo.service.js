@@ -1,10 +1,11 @@
 require("dotenv").config();
-
 const DbMixin = require("moleculer-db");
 const Sequelize = require("sequelize");
 const SqlAdapter = require("moleculer-db-adapter-sequelize");
 // Строка подключения к базе данных, используя переменные окружения
 const dbUrl = `postgres://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
+
+const sequelize = new Sequelize(dbUrl, { logging: false });
 
 module.exports = {
 	name: "todos",
@@ -32,21 +33,24 @@ module.exports = {
 				"Access-Control-Allow-Origin": "*",
 			},
 		},
-		// Настройки для пагинации
-		pageSize: 10,
-		maxPageSize: 50,
-		// Пример настроек валидации данных
-		entityValidator: {
-			title: { type: "string", min: 3, max: 255 },
-			description: { type: "string", optional: true },
-			completed: { type: "boolean", optional: true },
-		},
 		// Настройки для синхронизации базы данных
 		db: {
 			// Параметры синхронизации (для sequelize)
 			sync: true, // Автоматическое создание таблиц
-			alter: false, // Не изменять существующие таблицы
+			alter: true, // Изменять существующие таблицы
 		},
+	},
+
+	async started() {
+		try {
+			await sequelize.sync({
+				force: this.settings.db.sync,
+				alter: this.settings.db.alter,
+			});
+			this.logger.info("База данных синхронизирована.");
+		} catch (err) {
+			this.logger.error("Ошибка при синхронизации базы данных:", err);
+		}
 	},
 
 	actions: {
